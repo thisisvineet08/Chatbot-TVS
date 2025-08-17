@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persona-Based Collections Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chat-bubble-user {
+            background-color: #3B82F6; /* blue-500 */
+            color: white;
+        }
+        .chat-bubble-bot {
+            background-color: #E5E7EB; /* gray-200 */
+            color: #1F2937; /* gray-800 */
+        }
+        #chat-window::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-window::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        #chat-window::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        #chat-window::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+    <div class="w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl flex flex-col h-full">
+        <!-- Header -->
+        <div class="bg-blue-600 text-white p-4 rounded-t-2xl shadow-md flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mr-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 2.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">Vineet - Collections Assistant</h1>
+                    <p id="status" class="text-sm text-blue-200">Status: Online</p>
+                </div>
+            </div>
+            <button id="end-chat-btn" title="End Chat & Generate Report" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-600 focus:ring-red-500 disabled:bg-red-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Persona Indicator -->
+        <div id="persona-indicator" class="p-2 bg-gray-100 text-center text-sm text-gray-600 font-medium transition-all duration-300">
+            Persona: Not yet identified
+        </div>
+
+        <!-- Chat Window -->
+        <div id="chat-window" class="flex-1 p-6 overflow-y-auto min-h-0">
+            <!-- Bot Welcome Message -->
+            <div class="flex justify-start mb-4">
+                <div class="chat-bubble-bot py-3 px-4 rounded-lg max-w-xs">
+                    <p class="text-sm">Hello, I'm Vineet, your virtual collections assistant. How can I help you today regarding your account?</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final Report Section -->
+        <div id="report-section" class="hidden p-4 border-t-2 border-dashed bg-gray-50">
+            <h3 class="font-bold text-lg text-gray-800 mb-2">Conversation Report</h3>
+            <div class="text-sm space-y-1">
+                <p><strong>Customer ID:</strong> <span id="report-customer-id"></span></p>
+                <p><strong>Final Sentiment Score:</strong> <span id="report-sentiment-score" class="font-semibold"></span></p>
+                <p><strong>Justification:</strong> <em id="report-justification" class="text-gray-600"></em></p>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden p-4 flex items-center justify-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span id="loading-text" class="text-sm text-gray-500">Vineet is writing...</span>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 bg-gray-50 rounded-b-2xl border-t border-gray-200">
+            <div class="flex items-center">
+                <input type="text" id="user-input" placeholder="Type your message..." class="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="send-btn" class="ml-3 bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const endChatBtn = document.getElementById('end-chat-btn');
+        const loadingIndicator = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
+        const personaIndicator = document.getElementById('persona-indicator');
+        const reportSection = document.getElementById('report-section');
+
+        // --- API Configuration ---
+        const API_KEY = "AIzaSyAajJPJRn5wB059eYCfOK-SvcdgCJq9h5g"; 
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+
+        // --- State ---
+        let chatHistory = [];
+        const customerId = `CUST-${Math.floor(10000 + Math.random() * 90000)}`;
+        
+        // --- Safety Settings ---
+        const safetySettings = [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+        ];
+
+        // --- Event Listeners ---
+        sendBtn.addEventListener('click', handleUserMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleUserMessage();
+        });
+        endChatBtn.addEventListener('click', handleEndChat);
+
+        /**
+         * Main function to handle the user's message using a single, robust API call.
+         */
+        async function handleUserMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            addMessageToUI(message, 'user');
+            userInput.value = '';
+            toggleLoading(true, "Vineet is writing...");
+
+            try {
+                // Single, robust API call to get both persona and response
+                const response = await getBotResponse(message);
+                
+                updatePersonaIndicator(response.persona);
+                addMessageToUI(response.responseText, 'bot');
+                
+                // Update chat history
+                chatHistory.push({ role: "user", parts: [{ text: message }] });
+                chatHistory.push({ role: "model", parts: [{ text: response.responseText }] });
+                
+                // FIX: Keep the chat history from getting too long
+                if (chatHistory.length > 8) { // Keep the last 8 messages (4 turns)
+                    chatHistory = chatHistory.slice(-8);
+                }
+
+            } catch (error) {
+                console.error("Error processing message:", error);
+                addMessageToUI(`Sorry, an error occurred: ${error.message}`, 'bot');
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        /**
+         * RE-ENGINEERED: Single function to get persona and response in one call.
+         * @param {string} message - The user's input message.
+         * @returns {Promise<object>} An object containing the persona and responseText.
+         */
+        async function getBotResponse(message) {
+            const prompt = `
+                You are an advanced collections assistant named Vineet. Your task is to analyze a customer's message and respond appropriately.
+
+                1.  **Analyze Persona**: First, silently analyze the message to determine the customer's persona from one of the following options: Cooperative, Confused, Evasive, or Aggressive.
+                2.  **Craft Response**: Based on that persona, craft a response following these rules:
+                    * **Cooperative**: Be warm, efficient, and provide a payment link.
+                    * **Confused**: Be patient, clear, and answer their question simply.
+                    * **Evasive**: Be polite but firm, and steer the conversation toward a specific commitment.
+                    * **Aggressive**: Validate their frustration and immediately offer to connect them to a human agent. Do not try to solve the payment issue yourself.
+                3.  **Format Output**: Respond with ONLY a valid JSON object containing the identified persona and your crafted response, like this: {"persona": "...", "responseText": "..."}
+
+                Conversation History for context:
+                ${JSON.stringify(chatHistory)}
+
+                Customer's latest message:
+                "${message}"
+
+                Your JSON response:
+            `;
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: 0.5,
+                    maxOutputTokens: 1024,
+                    responseMimeType: "application/json",
+                },
+                safetySettings: safetySettings
+            };
+            
+            const rawResponse = await callGeminiAPI(payload);
+            return parseJsonFromText(rawResponse);
+        }
+
+
+        /**
+         * Handles ending the chat and generating the final report.
+         */
+        async function handleEndChat() {
+            if (chatHistory.length === 0) {
+                alert("Please have a conversation first before generating a report.");
+                return;
+            }
+            toggleLoading(true, "Generating final report...");
+
+            try {
+                const rawReport = await getFinalSentimentReport();
+                const report = parseJsonFromText(rawReport);
+                document.getElementById('report-customer-id').textContent = customerId;
+                document.getElementById('report-sentiment-score').textContent = report.sentimentScore;
+                document.getElementById('report-justification').textContent = report.justification;
+                reportSection.classList.remove('hidden');
+                chatWindow.parentElement.scrollTop = chatWindow.parentElement.scrollHeight;
+            } catch (error) {
+                console.error("Error generating report:", error);
+                addMessageToUI(`Sorry, I couldn't generate the final report: ${error.message}`, 'bot');
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        /**
+         * Calls the Gemini API to get a final sentiment score for the whole conversation.
+         */
+        async function getFinalSentimentReport() {
+            const prompt = `
+                You are a sentiment analysis expert. Analyze the entire following chat conversation between a collections assistant ('model') and a customer ('user').
+                Your task is to provide a final sentiment score for the conversation on a scale from -1.0 (very negative) to 1.0 (very positive).
+                Also provide a brief justification for your score.
+                Respond with ONLY a valid JSON object in the format: {"sentimentScore": <score>, "justification": "<text>"}.
+                Conversation History: ${JSON.stringify(chatHistory)}
+                JSON Report:
+            `;
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: 0.1,
+                    responseMimeType: "application/json",
+                },
+                safetySettings: safetySettings
+            };
+            return await callGeminiAPI(payload);
+        }
+        
+        /**
+         * RE-ENGINEERED: Robustly parses a JSON object from a string.
+         * It finds the first '{' and the last '}' to extract the JSON object,
+         * ignoring any text, markdown, or code fences outside of it.
+         * @param {string} text - The text containing the JSON.
+         * @returns {object} The parsed JSON object.
+         */
+        function parseJsonFromText(text) {
+            // Find the first '{' and the last '}' in the string.
+            const startIndex = text.indexOf('{');
+            const endIndex = text.lastIndexOf('}');
+
+            if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+                throw new Error("No valid JSON object found in the AI's response.");
+            }
+
+            // Extract the JSON string.
+            let jsonString = text.substring(startIndex, endIndex + 1);
+            
+            try {
+                // Parse the extracted string.
+                return JSON.parse(jsonString);
+            } catch (e) {
+                console.error("Failed to parse extracted JSON:", e, "Original text:", text);
+                throw new Error("Could not parse the JSON response from the AI.");
+            }
+        }
+
+        /**
+         * Generic function to make the fetch call to the Gemini API with exponential backoff.
+         */
+        async function callGeminiAPI(payload) {
+            let attempts = 0;
+            while (attempts < 5) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorBody = await response.json().catch(() => ({ message: 'Could not parse error body.' }));
+                        console.error("API Error Response:", errorBody);
+                        throw new Error(`API call failed with status: ${response.status}. Message: ${errorBody.error?.message || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        console.error("Unexpected API response structure. Full response:", JSON.stringify(result, null, 2));
+                        if (result.promptFeedback?.blockReason) {
+                             throw new Error(`Request was blocked: ${result.promptFeedback.blockReason}. Check safety settings.`);
+                        }
+                        if (result.candidates?.[0]?.finishReason && result.candidates[0].finishReason !== "STOP") {
+                             throw new Error(`Model stopped for reason: ${result.candidates[0].finishReason}. The response may be incomplete.`);
+                        }
+                        throw new Error("Unexpected API response structure. The model did not return any content.");
+                    }
+
+                } catch (error) {
+                    console.error("Error in callGeminiAPI:", error);
+                    attempts++;
+                    if (attempts >= 5) {
+                        throw error; 
+                    }
+                    const delay = Math.pow(2, attempts) * 100;
+                    await new Promise(res => setTimeout(res, delay));
+                }
+            }
+            throw new Error("API call failed after multiple retries.");
+        }
+
+        /**
+         * Adds a message bubble to the chat window UI.
+         */
+        function addMessageToUI(message, sender) {
+            const bubble = document.createElement('div');
+            bubble.className = `flex mb-4 ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+            bubble.innerHTML = `<div class="${sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot'} py-3 px-4 rounded-lg max-w-xs"><p class="text-sm">${message}</p></div>`;
+            chatWindow.appendChild(bubble);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        /**
+         * Shows or hides the loading indicator.
+         */
+        function toggleLoading(isLoading, text = "Vineet is writing...") {
+            loadingText.textContent = text;
+            loadingIndicator.classList.toggle('hidden', !isLoading);
+            sendBtn.disabled = isLoading;
+            userInput.disabled = isLoading;
+            endChatBtn.disabled = isLoading;
+            if (!isLoading) userInput.focus();
+        }
+        
+        /**
+         * Updates the persona indicator at the top of the chat.
+         */
+        function updatePersonaIndicator(persona) {
+            const personaEmojis = { Cooperative: '😊', Confused: '🤔', Evasive: '😒', Aggressive: '😠' };
+            personaIndicator.textContent = `Persona: ${persona} ${personaEmojis[persona] || ''}`;
+        }
+
+    </script>
+</body>
+</html>
